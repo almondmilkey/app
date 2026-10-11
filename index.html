@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Memory Lab">
+<meta name="theme-color" content="#fbf8f4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Memory Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Audiowide&family=Chakra+Petch:wght@400;500;600&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: one-screen phone app. Warm sand glow on cream, navy ink, white "frames" with cyber corner brackets. */
+:root{
+  --paper:#fbf8f4; --sand:#dcc3a9; --glow:#9c7457; --ink:#7a6e64; --navy:#1d3549;
+  --surface:#fffdfa; --line:#e6dbcf; --shadow:rgba(110,80,55,.28);
+  --on-navy:#f6efe7; --bubble-text:#fffaf4; --fill:#8a7d72;
+  --ok:#55745a; --bad:#a84a3c; --cover:#2a4458;
+  --card-bg:#fffdfa; --card-ink:#1d3549; --card-red:#a84a3c;
+  --f-display:"Audiowide","Chakra Petch",system-ui,sans-serif;
+  --f-body:"Chakra Petch",system-ui,-apple-system,sans-serif;
+  --f-mono:"Share Tech Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#1b1613; --sand:#4a382b; --glow:#8a6247; --ink:#c9b8a6; --navy:#9dbad3;
+  --surface:#28201b; --line:#3d322a; --shadow:rgba(0,0,0,.5);
+  --on-navy:#14202b; --bubble-text:#fbefe2; --fill:#a8988a;
+  --ok:#8db58f; --bad:#e08a7b; --cover:#3a5368;
+  --card-bg:#efe5d8; --card-ink:#1d3549; --card-red:#a84a3c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1b1613; --sand:#4a382b; --glow:#8a6247; --ink:#c9b8a6; --navy:#9dbad3;
+  --surface:#28201b; --line:#3d322a; --shadow:rgba(0,0,0,.5);
+  --on-navy:#14202b; --bubble-text:#fbefe2; --fill:#a8988a;
+  --ok:#8db58f; --bad:#e08a7b; --cover:#3a5368;
+  --card-bg:#efe5d8; --card-ink:#1d3549; --card-red:#a84a3c; color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;box-sizing:border-box}
+body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+
+.app{position:relative;height:100%;max-width:460px;margin:0 auto;overflow:hidden;
+  background:radial-gradient(130% 75% at 50% 62%,var(--sand) 0%,color-mix(in srgb,var(--sand) 45%,var(--paper)) 48%,var(--paper) 82%)}
+.app::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,color-mix(in srgb,var(--ink) 5%,transparent) 0 1px,transparent 1px 4px);mix-blend-mode:multiply;opacity:.5}
+#screen{height:100%;display:flex;flex-direction:column;padding-inline:16px;padding-block:10px 14px;gap:12px}
+
+.hud{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);opacity:.85}
+.hud-row{display:flex;justify-content:space-between;align-items:center}
+
+/* home */
+.greet{font-family:var(--f-display);font-weight:400;font-size:22px;line-height:1.5;letter-spacing:.07em;text-transform:uppercase;text-align:center;margin:18px 0 0;text-wrap:balance}
+.modes{flex:1;display:grid;grid-template-columns:1fr 1fr;align-content:center;justify-items:center;gap:4px}
+.bubble{width:100%;max-width:178px;aspect-ratio:1;border:0;border-radius:50%;
+  background:radial-gradient(closest-side,var(--glow) 0%,color-mix(in srgb,var(--glow) 60%,transparent) 42%,transparent 100%);
+  color:var(--bubble-text);font-family:var(--f-display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;
+  text-shadow:0 1px 8px rgba(60,35,20,.45);transition:transform .15s ease}
+.bubble:active{transform:scale(.94)}
+.bubble small{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;opacity:.85;margin-top:4px;text-shadow:none}
+.progress{border:0;background:none;padding:0;display:grid;gap:8px;text-align:center}
+.pbar{height:40px;border-radius:999px;background:var(--navy);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+.pfill{height:100%;background:var(--fill);border-radius:999px;transition:width .6s ease;min-width:0}
+.pmeta{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+
+/* shared chrome */
+.bar-top{display:flex;justify-content:space-between;align-items:center;min-height:52px}
+.icon-btn{width:48px;height:48px;border:0;background:none;padding:0;color:var(--ink)}
+.icon-btn svg{width:100%;height:100%}
+.stop-btn{display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;border:1.5px solid var(--ink);background:none;font-family:var(--f-display);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.stop-btn i{width:10px;height:10px;background:var(--bad);border-radius:2px}
+.title{font-family:var(--f-display);font-weight:400;font-size:20px;letter-spacing:.08em;text-transform:uppercase;text-align:center;margin:0}
+.frame{position:relative;background:var(--surface);border-radius:20px;padding:18px;box-shadow:0 14px 34px -16px var(--shadow);min-height:0}
+.frame::before,.frame::after{content:"";position:absolute;width:16px;height:16px;border:1.5px solid var(--navy);opacity:.55;pointer-events:none}
+.frame::before{top:9px;left:9px;border-right:0;border-bottom:0;border-top-left-radius:6px}
+.frame::after{bottom:9px;right:9px;border-left:0;border-top:0;border-bottom-right-radius:6px}
+.grow{flex:1}
+.foot{display:flex;justify-content:center;align-items:center;gap:12px;min-height:52px}
+.foot.spread{justify-content:space-between;padding-inline:8px}
+.clock{font-family:var(--f-display);font-size:20px;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.btn{height:50px;padding:0 26px;border-radius:999px;border:1.5px solid var(--navy);font-family:var(--f-display);font-size:14px;letter-spacing:.1em;text-transform:uppercase;background:none;color:var(--navy)}
+.btn.primary{background:var(--navy);color:var(--on-navy)}
+.btn.wide{flex:1;max-width:200px}
+.btn:active{transform:scale(.97)}
+
+/* intro */
+.intro{display:flex;flex-direction:column;gap:18px;justify-content:center}
+.blurb{margin:0;font-size:16px;line-height:1.5;color:var(--navy);text-align:center;text-wrap:balance}
+.summary{margin:0;display:grid;gap:0;border-top:1px solid var(--line)}
+.summary div{display:flex;justify-content:space-between;padding:11px 4px;border-bottom:1px solid var(--line)}
+.summary dt{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.summary dd{margin:0;font-weight:600;color:var(--navy)}
+.bestline{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.edit-link{align-self:center;border:0;background:none;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);text-decoration:underline;text-underline-offset:4px;padding:6px}
+
+/* stage */
+.stage{flex:1;display:grid;place-items:center;overflow:hidden}
+.stage.blank>*{visibility:hidden}
+.count-in{font-family:var(--f-display);font-size:96px;color:var(--navy)}
+.big-digit{font-family:var(--f-mono);font-size:min(46vw,190px);line-height:1;color:var(--navy)}
+.big-bits{font-family:var(--f-mono);font-size:min(17vw,76px);letter-spacing:.06em;color:var(--navy);display:flex;flex-wrap:wrap;justify-content:center;gap:0 .45em}
+.big-bits.b8{font-size:min(14vw,62px)}
+
+/* playing cards */
+.card{position:relative;background:var(--card-bg);color:var(--card-ink);border:1.5px solid color-mix(in srgb,var(--card-ink) 25%,transparent);border-radius:14px;font-family:var(--f-body);font-weight:500}
+.card.red{color:var(--card-red)}
+.card.lg{width:min(62vw,230px);aspect-ratio:5/7}
+.card .cn{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:1}
+.card.lg .cn{font-size:34px}
+.card .cn.tl{top:10px;left:12px}.card .cn.br{bottom:10px;right:12px;transform:rotate(180deg)}
+.card .pip{position:absolute;inset:0;display:grid;place-items:center;font-size:96px}
+.mini{display:grid;place-items:center;align-content:center;line-height:1.05;font-size:15px;font-weight:600;border-radius:7px;width:100%;aspect-ratio:5/7}
+.mini .s{font-size:14px}
+
+/* grid (time out) */
+.grid-wrap{flex:1;overflow:auto;padding:20px 14px}
+.grid{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px;max-width:340px;margin:0 auto}
+.grid.cards{gap:6px}
+.cell{display:grid;place-items:center;border-radius:7px;font-family:var(--f-mono);font-size:22px;color:var(--navy);aspect-ratio:1;border:1px solid var(--line);background:var(--surface)}
+.grid.cards .cell{aspect-ratio:5/7;padding:0;border:0;background:none}
+.grid.cards .cell .mini{border:1.5px solid color-mix(in srgb,var(--card-ink) 22%,transparent);background:var(--card-bg);color:var(--card-ink)}
+.grid.cards .cell .mini.red{color:var(--card-red)}
+button.cell{padding:0}
+.cell.covered{background:repeating-linear-gradient(135deg,var(--cover) 0 3px,color-mix(in srgb,var(--cover) 82%,var(--paper)) 3px 6px);border-color:transparent}
+.grid.cards .cell.covered{border-radius:7px}
+.cell.sel{outline:2.5px solid var(--glow);outline-offset:1px;box-shadow:0 0 0 5px color-mix(in srgb,var(--glow) 25%,transparent)}
+.cell.filled{background:var(--surface)}
+.cell.ok{border-color:var(--ok);box-shadow:inset 0 0 0 1.5px var(--ok)}
+.cell.bad{border-color:var(--bad);box-shadow:inset 0 0 0 1.5px var(--bad);flex-direction:column;line-height:1}
+.cell.bad small{font-size:11px;color:var(--bad);text-decoration:line-through}
+.grid.cards .cell.ok .mini{box-shadow:0 0 0 2px var(--ok)}
+.grid.cards .cell.bad{display:flex;flex-direction:column;gap:2px;box-shadow:none}
+.grid.cards .cell.bad .mini{box-shadow:0 0 0 2px var(--bad)}
+
+/* recall */
+.recall{flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.slots{flex:1;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px}
+.slot{min-width:34px;height:40px;padding:0 4px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:20px;color:var(--navy)}
+.slot.c{font-family:var(--f-body);font-weight:600;font-size:15px;min-width:42px}
+.slot.red{color:var(--card-red)}
+.slot.cur{border-color:var(--glow);box-shadow:0 0 0 3px color-mix(in srgb,var(--glow) 25%,transparent)}
+.slot.empty{color:transparent}
+.bundle{display:flex;gap:3px;margin-right:6px}
+.bundle .slot{min-width:24px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad.bits{grid-template-columns:1fr 1fr 1fr}
+.key{height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-family:var(--f-mono);font-size:24px;color:var(--navy);box-shadow:0 3px 10px -6px var(--shadow)}
+.key:active,.key.on{background:var(--navy);color:var(--on-navy)}
+.key.fn{font-family:var(--f-body);font-size:20px;color:var(--ink)}
+.key.fn:active{color:var(--on-navy)}
+.picker{display:grid;gap:8px}
+.ranks{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.ranks .key{height:44px;font-family:var(--f-body);font-weight:600;font-size:17px}
+.suits{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.suits .key{height:48px;font-size:24px;font-family:var(--f-body)}
+.suits .key.red{color:var(--card-red)}
+.suits .key.red.on,.suits .key.red:active{color:var(--on-navy)}
+.hint{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:center;margin:0}
+
+/* say it */
+.say{display:grid;gap:22px;justify-items:center;width:100%}
+.say-num{font-family:var(--f-mono);font-size:min(13vw,58px);letter-spacing:.08em;color:var(--navy)}
+.say-small{font-family:var(--f-mono);font-size:26px;letter-spacing:.12em;color:var(--ink)}
+.say-ans{font-family:var(--f-display);font-size:min(8.5vw,36px);letter-spacing:.03em;text-align:center;word-break:break-all}
+.say-ans .a{color:var(--navy)}.say-ans .b{color:var(--glow)}
+.say-pairs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.say-pairs span{display:grid;justify-items:center;padding:4px 7px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--navy)}
+.say-pairs b{font-family:var(--f-mono);font-weight:400;font-size:11px;color:var(--ink)}
+.timebar{width:70%;height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.timebar i{display:block;height:100%;background:var(--glow);transform-origin:left;animation:drain linear forwards}
+@keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.btn.good{border-color:var(--ok);color:var(--ok)}
+.btn.wrong{border-color:var(--bad);color:var(--bad)}
+
+/* results */
+.result{flex:1;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.score-row{display:flex;align-items:center;gap:18px;padding-inline:6px}
+.acc{font-family:var(--f-display);font-size:52px;color:var(--navy);line-height:1}
+.meta{display:grid;gap:4px;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.chip{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--glow);color:var(--bubble-text)}
+.review{flex:1;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;border-top:1px solid var(--line);padding-top:14px}
+.rv{display:grid;justify-items:center;min-width:36px;padding:5px 5px;border-radius:7px;border:1px solid var(--line);font-family:var(--f-mono);font-size:18px;color:var(--navy);line-height:1.1}
+.rv.c{font-family:var(--f-body);font-weight:600;font-size:15px}
+.rv .red{color:var(--card-red)}
+.rv.ok{border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+.rv.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 8%,transparent)}
+.rv small{font-size:12px;color:var(--bad);text-decoration:line-through}
+.rv-legend{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0}
+.say-row{width:100%;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}
+.say-row .n{font-family:var(--f-mono);color:var(--navy)}
+.say-row .s{font-size:13px;word-break:break-all}
+.say-row .m{font-family:var(--f-mono);font-size:12px}
+.say-row .m.ok{color:var(--ok)}.say-row .m.bad{color:var(--bad)}
+.review.list{display:block}
+.grid-review{width:100%}
+
+/* settings sheet */
+.sheet{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-end;background:color-mix(in srgb,var(--paper) 55%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.panel{background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:88%;overflow:auto;display:grid;gap:20px;box-shadow:0 -10px 40px -20px var(--shadow)}
+.panel h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:16px;letter-spacing:.1em;text-transform:uppercase;color:var(--navy)}
+.ctl{display:grid;gap:8px}
+.ctl-head{display:flex;justify-content:space-between;align-items:baseline}
+.ctl label,.ctl .lbl{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.ctl output{font-family:var(--f-mono);font-size:16px;color:var(--navy)}
+input[type=range]{width:100%;accent-color:var(--navy);height:28px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1.5px solid var(--navy);border-radius:999px;overflow:hidden}
+.seg button{height:42px;border:0;background:none;color:var(--navy);font-family:var(--f-display);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.seg button.on{background:var(--navy);color:var(--on-navy)}
+.keygrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.keygrid label{display:grid;gap:4px;justify-items:center;font-family:var(--f-mono);font-size:14px;color:var(--navy)}
+.keygrid input{width:100%;height:40px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--navy);font-family:var(--f-body);font-size:16px;font-weight:600}
+.panel .row{display:flex;gap:10px;justify-content:space-between;align-items:center}
+.txt-btn{border:0;background:none;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);text-decoration:underline;text-underline-offset:4px;padding:6px 0}
+
+/* stats */
+.stats{flex:1;overflow:auto;display:grid;gap:18px;align-content:start}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{display:grid;gap:2px;justify-items:center;padding:10px 4px;border:1px solid var(--line);border-radius:12px}
+.tile b{font-family:var(--f-display);font-weight:400;font-size:24px;color:var(--navy)}
+.tile span{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:var(--f-mono);font-weight:400;font-size:10px;letter-spacing:.12em;text-transform:uppercase;text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px 4px;border-bottom:1px solid var(--line);color:var(--navy);font-variant-numeric:tabular-nums}
+.tbl td:not(:first-child),.tbl th:not(:first-child){text-align:right}
+.stats h4{margin:0 0 6px;font-family:var(--f-display);font-weight:400;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.stats p{margin:0;font-size:14px;line-height:1.5;color:var(--navy)}
+.danger{color:var(--bad)}
+@media (prefers-reduced-motion: reduce){.bubble,.pfill,.btn{transition:none}}
+@media (max-height:640px){.greet{margin-top:4px;font-size:19px}.key{height:46px}.ranks .key{height:38px}.suits .key{height:42px}}
+
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+
+</head>
+<body>
+<div class="app" id="app"><div id="screen"></div></div>
+
+<script>
+(()=>{
+const KEY='memlab.v1';
+const SUITS=['♠︎','♥︎','♦︎','♣︎'];
+const RED=[false,true,true,false];
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const DEFAULT_KEY=['o','ma','ka','shi','fi','ra','li','te','be','pe'];
+const DEF={
+  rush:{type:'numbers',speed:2,items:20},
+  timeout:{type:'numbers',time:120,items:35},
+  sayit:{speed:4,items:10,minLen:6,maxLen:9,key:DEFAULT_KEY.slice()},
+  binary:{bundle:4,speed:1,items:20}
+};
+const MODES={
+  rush:{name:'Rush me',blurb:'Items flash one at a time. When they stop, tap them back in the same order.'},
+  timeout:{name:'Time out',blurb:'Study the whole grid before the clock runs out. Then tap each covered cell and fill it in.'},
+  sayit:{name:'Say it',blurb:'Turn each number into its sounds before the answer appears. Then mark yourself good or wrong.'},
+  binary:{name:'Binary',blurb:'Bundles of 0s and 1s, one by one. When they stop, type the whole string back.'}
+};
+const LOG10=Math.log2(10), LOG52=Math.log2(52);
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- storage ---------- */
+function load(){
+  let r=null; try{r=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+  const st={settings:{},sessions:[],days:[]};
+  for(const m in DEF) st.settings[m]=Object.assign({},DEF[m],r&&r.settings&&r.settings[m]||{});
+  const k=st.settings.sayit.key; if(!Array.isArray(k)||k.length!==10) st.settings.sayit.key=DEFAULT_KEY.slice();
+  if(r&&Array.isArray(r.sessions)) st.sessions=r.sessions;
+  if(r&&Array.isArray(r.days)) st.days=r.days;
+  return st;
+}
+let store=load();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
+
+/* ---------- helpers ---------- */
+const scr=document.getElementById('screen'), app=document.getElementById('app');
+const $=s=>scr.querySelector(s);
+const on=(s,f)=>{const el=$(s); if(el) el.addEventListener('click',f)};
+let timers=[], run=null, wake=null;
+const later=(f,ms)=>{const id=setTimeout(f,Math.max(0,ms)); timers.push(id); return id};
+const every=(f,ms)=>{const id=setInterval(f,ms); timers.push(id); return id};
+function clearTimers(){timers.forEach(id=>{clearTimeout(id);clearInterval(id)}); timers=[]}
+function stop(){clearTimers(); run=null; releaseWake()}
+async function requestWake(){try{if(navigator.wakeLock) wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function releaseWake(){try{wake&&wake.release()}catch(e){} wake=null}
+function ri(n){const a=new Uint32Array(1); crypto.getRandomValues(a); return a[0]%n}
+const digits=n=>Array.from({length:n},()=>String(ri(10)));
+function drawCards(n){
+  const out=[];
+  while(out.length<n){
+    const d=[]; for(let s=0;s<4;s++) for(const r of RANKS) d.push({r,s});
+    for(let i=d.length-1;i>0;i--){const j=ri(i+1); [d[i],d[j]]=[d[j],d[i]]}
+    out.push(...d);
+  }
+  return out.slice(0,n);
+}
+const mmss=sec=>{sec=Math.max(0,Math.round(sec)); return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`};
+const fmtSec=x=>`${Number.isInteger(x)?x:x.toFixed(1)} s`;
+function todayKey(){const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+const isCard=t=>t&&typeof t==='object';
+const eq=(a,b)=>isCard(a)?(isCard(b)&&a.r===b.r&&a.s===b.s):a===b;
+const tokText=t=>isCard(t)?`<span class="${RED[t.s]?'red':''}">${t.r}${SUITS[t.s]}</span>`:esc(t);
+const miniCard=t=>`<div class="mini ${RED[t.s]?'red':''}"><span>${t.r}</span><span class="s">${SUITS[t.s]}</span></div>`;
+function bigCard(t){
+  const c=`<span>${t.r}</span><span>${SUITS[t.s]}</span>`;
+  return `<div class="card lg ${RED[t.s]?'red':''}"><div class="cn tl">${c}</div><div class="pip">${SUITS[t.s]}</div><div class="cn br">${c}</div></div>`;
+}
+
+const ICON={
+  back:`<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M33 24H15m7-7-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  sliders:`<svg viewBox="0 0 48 48" aria-hidden="true"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"><path d="M5 13h38M5 24h38M5 35h38"/><circle cx="32" cy="13" r="3.6" style="fill:var(--paper)"/><circle cx="20" cy="24" r="3.6" style="fill:var(--paper)"/><circle cx="28" cy="35" r="3.6" style="fill:var(--paper)"/></g></svg>`
+};
+function header(left,right){
+  const L=left==='back'?`<button class="icon-btn" id="back" aria-label="Back">${ICON.back}</button>`:'<span></span>';
+  const R=right==='settings'?`<button class="icon-btn" id="settings" aria-label="Settings">${ICON.sliders}</button>`
+        :right==='stop'?`<button class="stop-btn" id="stopbtn"><i></i>Stop</button>`:'<span></span>';
+  return `<header class="bar-top">${L}${R}</header>`;
+}
+
+/* ---------- scoring ---------- */
+function progress(){
+  const ss=store.sessions;
+  if(!ss.length) return {fill:0,recent:0,best:0,n:0};
+  const last=ss.slice(-10), recent=Math.round(last.reduce((a,s)=>a+s.points,0)/last.length);
+  const best=Math.max(...ss.map(s=>s.points));
+  return {fill:best?Math.round(recent/best*100):0,recent,best,n:ss.length};
+}
+function record(r){
+  const acc=r.total?r.correct/r.total:0;
+  const points=Math.round(r.bits*acc*clamp(r.pace,0.5,3));
+  const prev=store.sessions.filter(s=>s.mode===r.mode);
+  const prevBest=prev.length?Math.max(...prev.map(s=>s.points)):null;
+  const day=todayKey();
+  const sess={mode:r.mode,type:r.type||null,ts:Date.now(),day,total:r.total,correct:r.correct,acc:Math.round(acc*1000)/1000,points,setup:r.setup};
+  store.sessions.push(sess); if(store.sessions.length>2000) store.sessions=store.sessions.slice(-2000);
+  if(!store.days.includes(day)) store.days.push(day);
+  save();
+  return {...sess,newBest:prevBest!==null&&points>prevBest};
+}
+
+/* ---------- home ---------- */
+function home(){
+  stop();
+  const p=progress(), days=store.days.length;
+  const date=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}).toUpperCase();
+  const meta=p.n?`Form ${p.fill}% · avg ${p.recent} · best ${p.best} · ${days} day${days===1?'':'s'}`:'Finish a round to start tracking';
+  scr.innerHTML=`
+    <div class="hud-row hud" style="padding-top:8px"><span>MEM//LAB</span><span>${date}</span></div>
+    <h1 class="greet">Hi Agata<br>choose mode</h1>
+    <div class="modes">${['rush','timeout','sayit','binary'].map(m=>`<button class="bubble" data-mode="${m}">${MODES[m].name}</button>`).join('')}</div>
+    <button class="progress" id="prog" aria-label="Open progress">
+      <div class="pbar"><div class="pfill" style="width:${p.fill}%"></div></div>
+      <div class="pmeta">${meta}</div>
+    </button>`;
+  scr.querySelectorAll('.bubble').forEach(b=>b.addEventListener('click',()=>intro(b.dataset.mode)));
+  on('#prog',stats);
+}
+
+/* ---------- intro ---------- */
+function summary(m){
+  const s=store.settings[m];
+  if(m==='rush') return [['Items',s.type==='cards'?'Cards':'Numbers'],['How many',s.items],['Time per item',fmtSec(s.speed)]];
+  if(m==='timeout') return [['Items',s.type==='cards'?'Cards':'Numbers'],['How many',s.items],['Study time',mmss(s.time)]];
+  if(m==='sayit') return [['Sequences',s.items],['Length',s.minLen===s.maxLen?`${s.minLen} digits`:`${s.minLen}–${s.maxLen} digits`],['Time per view',fmtSec(s.speed)]];
+  return [['Bundles',s.items],['Bundle size',`${s.bundle} digits`],['Time per bundle',fmtSec(s.speed)]];
+}
+function intro(m){
+  stop();
+  const mine=store.sessions.filter(s=>s.mode===m);
+  const best=mine.length?Math.max(...mine.map(s=>s.points)):null, last=mine[mine.length-1];
+  scr.innerHTML=header('back','settings')+`
+    <h2 class="title">${MODES[m].name}</h2>
+    <div class="frame intro grow">
+      <p class="blurb">${MODES[m].blurb}</p>
+      <dl class="summary">${summary(m).map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+      <button class="edit-link" id="edit">Change settings</button>
+      <div class="bestline">${mine.length?`Best ${best} pts · last ${Math.round(last.acc*100)}% · ${mine.length} rounds`:'No rounds yet'}</div>
+    </div>
+    <div class="foot"><button class="btn primary wide" id="start">Start</button></div>`;
+  on('#back',home); on('#settings',()=>openSettings(m)); on('#edit',()=>openSettings(m)); on('#start',()=>countIn(m));
+}
+
+/* ---------- settings ---------- */
+const CTL={
+  rush:[{k:'type',seg:[['numbers','Numbers'],['cards','Cards']]},
+        {k:'speed',label:'Time per item',min:0.5,max:8,step:0.5,fmt:fmtSec},
+        {k:'items',label:'Number of items',min:5,max:s=>s.type==='cards'?104:200,step:1}],
+  timeout:[{k:'type',seg:[['numbers','Numbers'],['cards','Cards']]},
+        {k:'time',label:'Study time',min:15,max:600,step:15,fmt:mmss},
+        {k:'items',label:'Items on screen',min:4,max:s=>s.type==='cards'?35:100,step:1}],
+  sayit:[{k:'speed',label:'Time per view',min:0.5,max:8,step:0.5,fmt:fmtSec},
+        {k:'items',label:'Number of sequences',min:1,max:100,step:1},
+        {k:'minLen',label:'Shortest number',min:6,max:9,step:1,fmt:v=>`${v} digits`},
+        {k:'maxLen',label:'Longest number',min:6,max:9,step:1,fmt:v=>`${v} digits`},
+        {key:true}],
+  binary:[{k:'bundle',seg:[[4,'4 digits'],[8,'8 digits']]},
+        {k:'speed',label:'Time per bundle',min:0.2,max:8,step:0.1,fmt:fmtSec},
+        {k:'items',label:'Number of bundles',min:2,max:100,step:1}]
+};
+function openSettings(m){
+  const s=store.settings[m];
+  const sheet=document.createElement('div'); sheet.className='sheet';
+  const draw=()=>{
+    const ctl=CTL[m].map(c=>{
+      if(c.seg) return `<div class="ctl"><span class="lbl">${c.k==='type'?'Items':'Bundle size'}</span><div class="seg">${c.seg.map(([v,l])=>`<button data-k="${c.k}" data-v="${v}" class="${String(s[c.k])===String(v)?'on':''}">${l}</button>`).join('')}</div></div>`;
+      if(c.key) return `<div class="ctl"><span class="lbl">Your alphabet (the key)</span><div class="keygrid">${s.key.map((x,i)=>`<label>${i}<input id="key-${i}" data-i="${i}" maxlength="5" autocapitalize="off" autocomplete="off" spellcheck="false" value="${esc(x)}"></label>`).join('')}</div><button class="txt-btn" id="keyreset" style="justify-self:start">Reset to default key</button></div>`;
+      const max=typeof c.max==='function'?c.max(s):c.max, f=c.fmt||(v=>v);
+      return `<div class="ctl"><div class="ctl-head"><label for="set-${c.k}">${c.label}</label><output id="out-${c.k}">${f(s[c.k])}</output></div><input type="range" id="set-${c.k}" data-k="${c.k}" min="${c.min}" max="${max}" step="${c.step}" value="${s[c.k]}"></div>`;
+    }).join('');
+    sheet.innerHTML=`<div class="panel" role="dialog" aria-label="${MODES[m].name} settings"><div class="row"><h3>${MODES[m].name} settings</h3><button class="btn primary" id="done" style="height:40px;padding:0 18px">Done</button></div>${ctl}</div>`;
+    sheet.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+      const c=CTL[m].find(x=>x.k===b.dataset.k); s[c.k]=typeof c.seg[0][0]==='number'?Number(b.dataset.v):b.dataset.v;
+      const it=CTL[m].find(x=>x.k==='items'); if(it&&typeof it.max==='function') s.items=Math.min(s.items,it.max(s));
+      save(); draw();
+    }));
+    sheet.querySelectorAll('input[type=range]').forEach(inp=>inp.addEventListener('input',()=>{
+      const k=inp.dataset.k, c=CTL[m].find(x=>x.k===k); s[k]=Math.round(Number(inp.value)*10)/10;
+      if(k==='minLen'&&s.minLen>s.maxLen){s.maxLen=s.minLen; const o=sheet.querySelector('#set-maxLen'); o.value=s.maxLen; sheet.querySelector('#out-maxLen').textContent=`${s.maxLen} digits`}
+      if(k==='maxLen'&&s.maxLen<s.minLen){s.minLen=s.maxLen; const o=sheet.querySelector('#set-minLen'); o.value=s.minLen; sheet.querySelector('#out-minLen').textContent=`${s.minLen} digits`}
+      sheet.querySelector('#out-'+k).textContent=(c.fmt||(v=>v))(s[k]); save();
+    }));
+    sheet.querySelectorAll('.keygrid input').forEach(inp=>inp.addEventListener('input',()=>{s.key[+inp.dataset.i]=inp.value.trim(); save()}));
+    const kr=sheet.querySelector('#keyreset'); if(kr) kr.addEventListener('click',()=>{s.key=DEFAULT_KEY.slice(); save(); draw()});
+    sheet.querySelector('#done').addEventListener('click',close);
+  };
+  const close=()=>{sheet.remove(); intro(m)};
+  sheet.addEventListener('click',e=>{if(e.target===sheet) close()});
+  draw(); app.appendChild(sheet);
+}
+
+/* ---------- play ---------- */
+function countIn(m){
+  stop(); requestWake();
+  scr.innerHTML=header('back','stop')+`<h2 class="title">${MODES[m].name}</h2><div class="frame stage"><div class="count-in" id="ci">3</div></div><div class="foot hud">Get ready</div>`;
+  const back=()=>intro(m); on('#back',back); on('#stopbtn',back);
+  later(()=>{$('#ci').textContent='2'},700); later(()=>{$('#ci').textContent='1'},1400);
+  later(()=>({rush:startRush,timeout:startTimeout,sayit:startSayit,binary:startBinary})[m](),2100);
+}
+function playShell(m,foot){
+  scr.innerHTML=header('back','stop')+`<h2 class="title">${MODES[m].name}</h2><div class="frame stage" id="stage"></div><div class="foot spread clock">${foot}</div>`;
+  const back=()=>intro(m); on('#back',back); on('#stopbtn',back);
+}
+function sequence(items,ms,render,done){
+  const st=$('#stage'), cnt=$('#count'), clk=$('#clock');
+  const t0=performance.now(), total=items.length*ms, gap=Math.min(90,ms*0.18);
+  const tick=()=>{if(clk) clk.textContent=mmss(Math.ceil(Math.max(0,total-(performance.now()-t0))/1000))};
+  tick(); every(tick,200);
+  items.forEach((it,i)=>{
+    later(()=>{st.innerHTML=render(it); st.classList.remove('blank'); cnt.textContent=`${i+1}/${items.length}`},i*ms);
+    later(()=>st.classList.add('blank'),(i+1)*ms-gap);
+  });
+  later(done,total);
+}
+
+function startRush(){
+  const s={...store.settings.rush};
+  const seq=s.type==='cards'?drawCards(s.items):digits(s.items);
+  run={mode:'rush',type:s.type,target:seq,s};
+  playShell('rush',`<span id="count">0/${seq.length}</span><span id="clock"></span>`);
+  sequence(seq,s.speed*1000,t=>s.type==='cards'?bigCard(t):`<div class="big-digit">${t}</div>`,()=>recallSeq(s.type==='cards'?'cards':'digits'));
+}
+function startBinary(){
+  const s={...store.settings.binary};
+  const bundles=Array.from({length:s.items},()=>Array.from({length:s.bundle},()=>String(ri(2))).join(''));
+  run={mode:'binary',type:null,bundles,target:bundles.join('').split(''),s};
+  playShell('binary',`<span id="count">0/${bundles.length}</span><span id="clock"></span>`);
+  sequence(bundles,s.speed*1000,b=>s.bundle===8?`<div class="big-bits b8"><span>${b.slice(0,4)}</span><span>${b.slice(4)}</span></div>`:`<div class="big-bits">${b}</div>`,()=>recallSeq('bits'));
+}
+
+function padHTML(kind){
+  if(kind==='bits') return `<div class="pad bits" id="pad"><button class="key" data-v="0">0</button><button class="key" data-v="1">1</button><button class="key fn" data-fn="del" aria-label="Delete">⌫</button></div>`;
+  if(kind==='cards') return `<div class="picker" id="pad"><div class="ranks">${RANKS.map(r=>`<button class="key" data-rank="${r}">${r}</button>`).join('')}<button class="key fn" data-fn="del" aria-label="Delete">⌫</button></div><div class="suits" style="grid-template-columns:repeat(4,1fr)">${SUITS.map((x,i)=>`<button class="key ${RED[i]?'red':''}" data-suit="${i}">${x}</button>`).join('')}</div></div>`;
+  return `<div class="pad" id="pad">${[1,2,3,4,5,6,7,8,9].map(d=>`<button class="key" data-v="${d}">${d}</button>`).join('')}<span></span><button class="key" data-v="0">0</button><button class="key fn" data-fn="del" aria-label="Delete">⌫</button></div>`;
+}
+function bindPad(){
+  run.pend={r:null,s:null};
+  const pad=$('#pad');
+  const mark=()=>pad.querySelectorAll('[data-rank],[data-suit]').forEach(b=>b.classList.toggle('on',b.dataset.rank===run.pend.r||(b.dataset.suit!=null&&+b.dataset.suit===run.pend.s)));
+  pad.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.fn==='del'){run.pend={r:null,s:null}; mark(); return run.onDel()}
+    if(b.dataset.v!=null) return run.onInput(b.dataset.v);
+    if(b.dataset.rank) run.pend.r=b.dataset.rank;
+    if(b.dataset.suit!=null) run.pend.s=+b.dataset.suit;
+    if(run.pend.r!=null&&run.pend.s!=null){const c={r:run.pend.r,s:run.pend.s}; run.pend={r:null,s:null}; mark(); run.onInput(c)} else mark();
+  });
+}
+
+function recallSeq(kind){
+  clearTimers();
+  const n=run.target.length; run.ans=[];
+  const hint=kind==='cards'?'Pick a rank and a suit for each card':'Enter them in the order you saw them';
+  scr.innerHTML=header('back','none')+`<h2 class="title">Recall</h2>
+    <div class="frame recall"><div class="hud-row hud"><span>${hint}</span><span id="filled">0/${n}</span></div><div class="slots" id="slots"></div></div>
+    ${padHTML(kind)}
+    <div class="foot"><button class="btn primary wide" id="check">Check</button></div>`;
+  const m=run.mode; on('#back',()=>intro(m));
+  const draw=()=>{
+    const cur=run.ans.length;
+    const slot=(i)=>{const v=run.ans[i]; const c=v!=null&&isCard(v);
+      return `<span class="slot ${kind==='cards'?'c':''} ${c&&RED[v.s]?'red':''} ${i===cur?'cur':''} ${v==null?'empty':''}">${v==null?'·':(c?`${v.r}${SUITS[v.s]}`:v)}</span>`};
+    let html='';
+    if(kind==='bits'){const b=run.s.bundle; for(let i=0;i<n;i+=b){let g=''; for(let j=i;j<i+b;j++) g+=slot(j); html+=`<span class="bundle">${g}</span>`}}
+    else for(let i=0;i<n;i++) html+=slot(i);
+    const box=$('#slots'); box.innerHTML=html; $('#filled').textContent=`${cur}/${n}`;
+    const c=box.querySelector('.cur'); if(c) c.scrollIntoView({block:'nearest'});
+  };
+  run.onInput=v=>{if(run.ans.length<n){run.ans.push(v); draw()}};
+  run.onDel=()=>{run.ans.pop(); draw()};
+  bindPad(); draw();
+  on('#check',checkSeq);
+}
+function checkSeq(){
+  const {target,ans,mode,s}=run; let correct=0, firstMiss=-1;
+  const okList=target.map((t,i)=>{const ok=ans[i]!=null&&eq(t,ans[i]); if(ok) correct++; else if(firstMiss<0) firstMiss=i; return ok});
+  let bitsPer, pace, setup;
+  if(mode==='binary'){bitsPer=1; pace=Math.sqrt((s.bundle*0.5)/s.speed); setup=`${s.items}×${s.bundle} @ ${fmtSec(s.speed)}`}
+  else{bitsPer=run.type==='cards'?LOG52:LOG10; pace=Math.sqrt((run.type==='cards'?3:2)/s.speed); setup=`${s.items} ${run.type} @ ${fmtSec(s.speed)}`}
+  const res=record({mode,type:run.type,total:target.length,correct,bits:correct*bitsPer,pace,setup});
+  const cardsKind=run.type==='cards';
+  const review=target.map((t,i)=>`<span class="rv ${cardsKind?'c':''} ${okList[i]?'ok':'bad'}"><b>${tokText(t)}</b>${okList[i]?'':`<small>${ans[i]!=null?tokText(ans[i]):'–'}</small>`}</span>`).join('');
+  results(res,`<p class="rv-legend">Shown in order · wrong answers struck through below</p><div class="review">${review}</div>`,firstMiss);
+}
+
+function gridCols(type,n){
+  if(type==='cards') return n<=9?3:n<=16?4:n<=25?5:6;
+  return n<=16?4:n<=30?5:n<=48?6:n<=70?8:10;
+}
+function startTimeout(){
+  const s={...store.settings.timeout};
+  const seq=s.type==='cards'?drawCards(s.items):digits(s.items);
+  const cols=gridCols(s.type,seq.length);
+  run={mode:'timeout',type:s.type,target:seq,s,cols};
+  scr.innerHTML=header('back','stop')+`<h2 class="title">Time out</h2>
+    <div class="frame grid-wrap"><div class="grid ${s.type}" style="--cols:${cols}">${seq.map(t=>`<div class="cell">${s.type==='cards'?miniCard(t):t}</div>`).join('')}</div></div>
+    <div class="foot spread"><span class="clock" id="clock">${mmss(s.time)}</span><button class="btn" id="ready">I'm ready</button></div>`;
+  const back=()=>intro('timeout'); on('#back',back); on('#stopbtn',back);
+  const t0=performance.now(), total=s.time*1000;
+  const go=()=>{if(run.went) return; run.went=true; run.used=Math.min(total,performance.now()-t0)/1000; recallGrid()};
+  every(()=>{const left=total-(performance.now()-t0); $('#clock').textContent=mmss(Math.ceil(Math.max(0,left)/1000)); if(left<=0) go()},200);
+  on('#ready',go);
+}
+function recallGrid(){
+  clearTimers();
+  const n=run.target.length, cards=run.type==='cards';
+  run.ans=Array(n).fill(null); run.sel=0;
+  scr.innerHTML=header('back','none')+`<h2 class="title">Recall</h2>
+    <div class="frame grid-wrap"><div class="grid ${run.type}" id="grid" style="--cols:${run.cols}"></div></div>
+    ${padHTML(cards?'cards':'digits')}
+    <div class="foot spread"><span class="hud" id="filled">0/${n}</span><button class="btn primary" id="check">Check</button></div>`;
+  on('#back',()=>intro('timeout'));
+  const grid=$('#grid');
+  const draw=()=>{
+    grid.innerHTML=run.ans.map((v,i)=>`<button class="cell ${v==null?'covered':'filled'} ${i===run.sel?'sel':''}" data-i="${i}" aria-label="Cell ${i+1}">${v==null?'':(cards?miniCard(v):v)}</button>`).join('');
+    $('#filled').textContent=`${run.ans.filter(v=>v!=null).length}/${n} filled`;
+    const c=grid.querySelector('.sel'); if(c) c.scrollIntoView({block:'nearest'});
+  };
+  grid.addEventListener('click',e=>{const b=e.target.closest('.cell'); if(!b) return; run.sel=+b.dataset.i; draw()});
+  run.onInput=v=>{
+    run.ans[run.sel]=v;
+    for(let k=1;k<n;k++){const j=(run.sel+k)%n; if(run.ans[j]==null){run.sel=j; break}}
+    draw();
+  };
+  run.onDel=()=>{
+    if(run.ans[run.sel]!=null) run.ans[run.sel]=null;
+    else if(run.sel>0){run.sel--; run.ans[run.sel]=null}
+    draw();
+  };
+  bindPad(); draw();
+  on('#check',checkGrid);
+}
+function checkGrid(){
+  const {target,ans,s,type,cols}=run, cards=type==='cards'; let correct=0;
+  const cells=target.map((t,i)=>{
+    const ok=ans[i]!=null&&eq(t,ans[i]); if(ok) correct++;
+    const main=cards?miniCard(t):t;
+    const mine=ans[i]==null?'–':(cards?`${ans[i].r}${SUITS[ans[i].s]}`:ans[i]);
+    return `<div class="cell ${ok?'ok':'bad'}">${main}${ok?'':`<small>${mine}</small>`}</div>`;
+  }).join('');
+  const per=run.used/target.length;
+  const res=record({mode:'timeout',type,total:target.length,correct,bits:correct*(cards?LOG52:LOG10),pace:Math.sqrt((cards?5:3)/Math.max(per,0.2)),setup:`${s.items} ${type} in ${mmss(run.used)}`});
+  results(res,`<p class="rv-legend">Studied for ${mmss(run.used)} · wrong answers struck through</p><div class="review"><div class="grid ${type} grid-review" style="--cols:${cols}">${cells}</div></div>`);
+}
+
+function startSayit(){
+  const s={...store.settings.sayit, key:store.settings.sayit.key.slice()};
+  const seqs=Array.from({length:s.items},()=>digits(s.minLen+ri(s.maxLen-s.minLen+1)).join(''));
+  run={mode:'sayit',seqs,i:0,marks:[],s};
+  scr.innerHTML=header('back','stop')+`<h2 class="title">Say it</h2><div class="frame stage" id="stage"></div><div class="foot spread" id="foot"></div>`;
+  const back=()=>intro('sayit'); on('#back',back); on('#stopbtn',back);
+  showNum();
+}
+function showNum(){
+  clearTimers();
+  const {seqs,i,s}=run;
+  $('#stage').innerHTML=`<div class="say"><div class="say-num">${seqs[i]}</div><div class="timebar"><i style="animation-duration:${s.speed}s"></i></div></div>`;
+  $('#foot').innerHTML=`<span class="clock">${i+1}/${seqs.length}</span><button class="btn" id="reveal">Show answer</button>`;
+  $('#reveal').addEventListener('click',showAns);
+  later(showAns,s.speed*1000);
+}
+function showAns(){
+  clearTimers();
+  const {seqs,i,s}=run, seq=seqs[i], syl=[...seq].map(d=>s.key[+d]||'?');
+  $('#stage').innerHTML=`<div class="say"><div class="say-small">${seq}</div><div class="say-ans">${syl.map((x,k)=>`<span class="${k%2?'b':'a'}">${esc(x)}</span>`).join('')}</div><div class="say-pairs">${[...seq].map((d,k)=>`<span><b>${d}</b>${esc(syl[k])}</span>`).join('')}</div></div>`;
+  $('#foot').innerHTML=`<button class="btn wrong wide" id="wrong">✕ Wrong</button><button class="btn good wide" id="good">✓ Good</button>`;
+  $('#wrong').addEventListener('click',()=>mark(false)); $('#good').addEventListener('click',()=>mark(true));
+}
+function mark(ok){
+  run.marks.push(ok); run.i++;
+  if(run.i<run.seqs.length) return showNum();
+  const {seqs,marks,s}=run; let correct=0, digitsOk=0;
+  seqs.forEach((q,i)=>{if(marks[i]){correct++; digitsOk+=q.length}});
+  const res=record({mode:'sayit',total:seqs.length,correct,bits:digitsOk*LOG10,pace:Math.sqrt((0.6*(s.minLen+s.maxLen)/2)/s.speed),setup:`${s.items} × ${s.minLen}–${s.maxLen} @ ${fmtSec(s.speed)}`});
+  const rows=seqs.map((q,i)=>`<div class="say-row"><span class="n">${q}</span><span class="s">${esc([...q].map(d=>s.key[+d]).join(''))}</span><span class="m ${marks[i]?'ok':'bad'}">${marks[i]?'✓ GOOD':'✕ WRONG'}</span></div>`).join('');
+  results(res,`<div class="review list">${rows}</div>`);
+}
+
+/* ---------- results ---------- */
+function results(r,reviewHTML,firstMiss=-1){
+  releaseWake(); const m=r.mode;
+  scr.innerHTML=header('back','none')+`<h2 class="title">${MODES[m].name} · result</h2>
+    <div class="frame result">
+      <div class="score-row"><div class="acc">${Math.round(r.acc*100)}%</div>
+        <div class="meta"><div>${r.correct}/${r.total} correct</div><div>${r.points} pts${r.newBest?'<span class="chip">New best</span>':''}</div>${firstMiss>=0?`<div>First miss at #${firstMiss+1}</div>`:''}</div></div>
+      ${reviewHTML}
+    </div>
+    <div class="foot"><button class="btn wide" id="home">Home</button><button class="btn primary wide" id="again">Again</button></div>`;
+  run=null;
+  on('#back',home); on('#home',home); on('#again',()=>countIn(m));
+}
+
+/* ---------- stats ---------- */
+function stats(){
+  stop();
+  const ss=store.sessions, p=progress();
+  const rows=['rush','timeout','sayit','binary'].map(m=>{
+    const x=ss.filter(s=>s.mode===m); if(!x.length) return `<tr><td>${MODES[m].name}</td><td>0</td><td>–</td><td>–</td></tr>`;
+    const l5=x.slice(-5), acc=Math.round(l5.reduce((a,s)=>a+s.acc,0)/l5.length*100);
+    return `<tr><td>${MODES[m].name}</td><td>${x.length}</td><td>${Math.max(...x.map(s=>s.points))}</td><td>${acc}%</td></tr>`;
+  }).join('');
+  const recent=ss.slice(-12).reverse().map(s=>{
+    const d=new Date(s.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+    return `<tr><td>${d} · ${MODES[s.mode].name}</td><td>${Math.round(s.acc*100)}%</td><td>${s.points}</td></tr>`;
+  }).join('');
+  scr.innerHTML=header('back','none')+`<h2 class="title">Progress</h2>
+    <div class="frame stats">
+      <div class="tiles"><div class="tile"><b>${store.days.length}</b><span>Days practiced</span></div><div class="tile"><b>${ss.length}</b><span>Rounds</span></div><div class="tile"><b>${p.fill}%</b><span>Current form</span></div></div>
+      <div><h4>By mode</h4><table class="tbl"><thead><tr><th>Mode</th><th>Rounds</th><th>Best pts</th><th>Last 5 acc.</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${recent?`<div><h4>Recent rounds</h4><table class="tbl"><thead><tr><th>Round</th><th>Accuracy</th><th>Points</th></tr></thead><tbody>${recent}</tbody></table></div>`:''}
+      <div><h4>How points work</h4><p>Points = what you remembered × accuracy × pace. Each correct digit counts 3.3, each card 5.7 and each binary digit 1, because a card is harder to guess than a digit. Pace rewards going faster than a normal tempo (2 s per digit, 3 s per card, 0.5 s per binary digit, 3 s per digit studied in Time out). It ranges from 0.5× to 3×.</p><p style="margin-top:8px">Form is your average over the last 10 rounds compared with your best round ever.</p></div>
+      <button class="txt-btn danger" id="reset" style="justify-self:start">Reset all progress</button>
+    </div>`;
+  on('#back',home);
+  const rb=$('#reset'); let armed=false;
+  rb.addEventListener('click',()=>{
+    if(!armed){armed=true; rb.textContent='Tap again to erase every round'; later(()=>{armed=false; rb.textContent='Reset all progress'},4000); return}
+    store.sessions=[]; store.days=[]; save(); stats();
+  });
+}
+
+home();
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+</script>
+</body>
+</html>
